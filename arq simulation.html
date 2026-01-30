@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARQ Protocol Simulator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: white;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: linear-gradient(145deg, #1e293b, #0f172a);
+            border-radius: 16px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5), 0 0 1px rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #e2e8f0;
+            font-size: 0.9em;
+        }
+
+        select, input[type="number"] {
+            padding: 10px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            font-size: 1em;
+            transition: all 0.3s;
+            background: rgba(15, 23, 42, 0.6);
+            color: #e2e8f0;
+        }
+
+        select:focus, input:focus {
+            outline: none;
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #6366f1, #4f46e5);
+            color: white;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #4f46e5, #4338ca);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #475569, #334155);
+            color: white;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-secondary:hover {
+            background: linear-gradient(135deg, #334155, #1e293b);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .frames-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .frame {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .frame-box {
+            width: 60px;
+            height: 80px;
+            border: 3px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2em;
+            color: white;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .frame-waiting {
+            background: linear-gradient(145deg, #475569, #334155);
+        }
+
+        .frame-sent {
+            background: linear-gradient(145deg, #3b82f6, #2563eb);
+            animation: pulse 1s infinite;
+            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.5);
+        }
+
+        .frame-acked {
+            background: linear-gradient(145deg, #10b981, #059669);
+            box-shadow: 0 4px 20px rgba(16, 185, 129, 0.4);
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .retransmit-badge {
+            font-size: 0.75em;
+            color: #f44336;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+
+        .loss-indicator {
+            color: #f44336;
+            font-size: 1.2em;
+            margin-top: 5px;
+        }
+
+        .legend {
+            display: flex;
+            gap: 25px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #cbd5e1;
+        }
+
+        .legend-box {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .stat-label {
+            font-weight: 600;
+            color: #94a3b8;
+        }
+
+        .stat-value {
+            font-size: 1.8em;
+            font-weight: bold;
+        }
+
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .comparison-item {
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .comparison-gbn {
+            background: linear-gradient(145deg, rgba(59, 130, 246, 0.1), rgba(37, 99, 235, 0.1));
+            border-left: 4px solid #3b82f6;
+        }
+
+        .comparison-sr {
+            background: linear-gradient(145deg, rgba(16, 185, 129, 0.1), rgba(5, 150, 105, 0.1));
+            border-left: 4px solid #10b981;
+        }
+
+        .comparison-item h4 {
+            margin-bottom: 10px;
+            font-size: 1.1em;
+            color: #e2e8f0;
+        }
+
+        .comparison-item ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .comparison-item li {
+            padding: 5px 0;
+            padding-left: 20px;
+            position: relative;
+            color: #cbd5e1;
+        }
+
+        .comparison-item li:before {
+            content: "•";
+            position: absolute;
+            left: 5px;
+        }
+
+        .performance-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .performance-card {
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .perf-throughput {
+            background: linear-gradient(145deg, rgba(59, 130, 246, 0.1), rgba(37, 99, 235, 0.05));
+        }
+
+        .perf-retrans {
+            background: linear-gradient(145deg, rgba(251, 146, 60, 0.1), rgba(249, 115, 22, 0.05));
+        }
+
+        .perf-efficiency {
+            background: linear-gradient(145deg, rgba(16, 185, 129, 0.1), rgba(5, 150, 105, 0.05));
+        }
+
+        .performance-card h4 {
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #e2e8f0;
+        }
+
+        .performance-card p {
+            color: #cbd5e1;
+            line-height: 1.6;
+        }
+
+        .time-display {
+            margin-bottom: 15px;
+            font-size: 1.1em;
+            color: #94a3b8;
+        }
+
+        h2, h3 {
+            color: #e2e8f0;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>ARQ Protocol Simulator</h1>
+        <p class="subtitle">Compare Go-Back-N and Selective Repeat Protocols</p>
+
+        <!-- Controls -->
+        <div class="card">
+            <div class="controls-grid">
+                <div class="control-group">
+                    <label for="protocol">Protocol</label>
+                    <select id="protocol">
+                        <option value="gbn">Go-Back-N</option>
+                        <option value="sr">Selective Repeat</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label for="windowSize">Window Size (1-8)</label>
+                    <input type="number" id="windowSize" value="4" min="1" max="8">
+                </div>
+
+                <div class="control-group">
+                    <label for="totalFrames">Total Frames (5-15)</label>
+                    <input type="number" id="totalFrames" value="10" min="5" max="15">
+                </div>
+
+                <div class="control-group">
+                    <label for="lossType">Loss Scenario</label>
+                    <select id="lossType">
+                        <option value="none">No Loss</option>
+                        <option value="frame">Frame Loss</option>
+                        <option value="ack">ACK Loss</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="lossFrameControl" class="control-group" style="display: none; max-width: 300px;">
+                <label for="lossFrame">Frame to Lose</label>
+                <input type="number" id="lossFrame" value="3" min="0">
+            </div>
+
+            <div class="button-group">
+                <button id="startBtn" class="btn-primary">
+                    <span>▶</span> Start
+                </button>
+                <button id="resetBtn" class="btn-secondary">
+                    <span>↻</span> Reset
+                </button>
+            </div>
+        </div>
+
+        <!-- Visualization -->
+        <div class="card">
+            <h2 id="protocolTitle">Go-Back-N Simulation</h2>
+            <div class="time-display">Time: <span id="timeDisplay">0</span></div>
+
+            <h3>Frames</h3>
+            <div id="framesContainer" class="frames-container"></div>
+
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-box frame-waiting"></div>
+                    <span>Waiting</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-box frame-sent"></div>
+                    <span>Sent</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-box frame-acked"></div>
+                    <span>Acknowledged</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics -->
+        <div class="card">
+            <h3>Current Statistics</h3>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <span class="stat-label">Transmitted:</span>
+                    <span class="stat-value" style="color: #2196f3;" id="statTransmitted">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Retransmitted:</span>
+                    <span class="stat-value" style="color: #ff9800;" id="statRetransmitted">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Acknowledged:</span>
+                    <span class="stat-value" style="color: #4caf50;" id="statAcknowledged">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Efficiency:</span>
+                    <span class="stat-value" style="color: #667eea;" id="statEfficiency">0%</span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // State variables
+        let frames = [];
+        let currentTime = 0;
+        let isRunning = false;
+        let intervalId = null;
+        let stats = {
+            transmitted: 0,
+            retransmitted: 0,
+            acknowledged: 0,
+            efficiency: 0
+        };
+
+        // Get DOM elements
+        const protocolSelect = document.getElementById('protocol');
+        const windowSizeInput = document.getElementById('windowSize');
+        const totalFramesInput = document.getElementById('totalFrames');
+        const lossTypeSelect = document.getElementById('lossType');
+        const lossFrameInput = document.getElementById('lossFrame');
+        const lossFrameControl = document.getElementById('lossFrameControl');
+        const startBtn = document.getElementById('startBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const framesContainer = document.getElementById('framesContainer');
+        const timeDisplay = document.getElementById('timeDisplay');
+        const protocolTitle = document.getElementById('protocolTitle');
+
+        // Initialize
+        function init() {
+            const totalFrames = parseInt(totalFramesInput.value);
+            frames = Array.from({ length: totalFrames }, (_, i) => ({
+                id: i,
+                status: 'waiting',
+                sentTime: null,
+                ackTime: null,
+                retransmits: 0
+            }));
+            
+            currentTime = 0;
+            stats = {
+                transmitted: 0,
+                retransmitted: 0,
+                acknowledged: 0,
+                efficiency: 0
+            };
+            
+            updateDisplay();
+            updateStats();
+        }
+
+        // Update visual display
+        function updateDisplay() {
+            framesContainer.innerHTML = '';
+            const lossType = lossTypeSelect.value;
+            const lossFrame = parseInt(lossFrameInput.value);
+            
+            frames.forEach(frame => {
+                const frameDiv = document.createElement('div');
+                frameDiv.className = 'frame';
+                
+                const frameBox = document.createElement('div');
+                frameBox.className = `frame-box frame-${frame.status}`;
+                frameBox.textContent = frame.id;
+                
+                frameDiv.appendChild(frameBox);
+                
+                if (frame.retransmits > 0) {
+                    const badge = document.createElement('div');
+                    badge.className = 'retransmit-badge';
+                    badge.textContent = `R:${frame.retransmits}`;
+                    frameDiv.appendChild(badge);
+                }
+                
+                if (lossType !== 'none' && frame.id === lossFrame && frame.retransmits === 0) {
+                    const lossIcon = document.createElement('div');
+                    lossIcon.className = 'loss-indicator';
+                    lossIcon.textContent = '⚡';
+                    frameDiv.appendChild(lossIcon);
+                }
+                
+                framesContainer.appendChild(frameDiv);
+            });
+            
+            timeDisplay.textContent = currentTime;
+            protocolTitle.textContent = protocolSelect.value === 'gbn' ? 
+                'Go-Back-N Simulation' : 'Selective Repeat Simulation';
+        }
+
+        // Update statistics display
+        function updateStats() {
+            document.getElementById('statTransmitted').textContent = stats.transmitted;
+            document.getElementById('statRetransmitted').textContent = stats.retransmitted;
+            document.getElementById('statAcknowledged').textContent = stats.acknowledged;
+            
+            const total = stats.transmitted + stats.retransmitted;
+            const efficiency = total > 0 ? ((stats.acknowledged / total) * 100).toFixed(1) : 0;
+            document.getElementById('statEfficiency').textContent = efficiency + '%';
+        }
+
+        // Go-Back-N simulation
+        function simulateGoBackN() {
+            const windowSize = parseInt(windowSizeInput.value);
+            const lossType = lossTypeSelect.value;
+            const lossFrame = parseInt(lossFrameInput.value);
+            
+            // Find base (first unacked frame)
+            const base = frames.findIndex(f => f.status === 'waiting' || f.status === 'sent');
+            if (base === -1) return;
+            
+            // Send frames within window
+            for (let i = base; i < Math.min(base + windowSize, frames.length); i++) {
+                if (frames[i].status === 'waiting') {
+                    frames[i].status = 'sent';
+                    frames[i].sentTime = currentTime;
+                    stats.transmitted++;
+                }
+            }
+            
+            // Process ACKs
+            frames.forEach((frame, idx) => {
+                if (frame.status === 'sent' && currentTime - frame.sentTime >= 2) {
+                    const shouldLose = (lossType === 'frame' && idx === lossFrame && frame.retransmits === 0) ||
+                                     (lossType === 'ack' && idx === lossFrame && frame.retransmits === 0);
+                    
+                    if (!shouldLose) {
+                        frame.status = 'acked';
+                        frame.ackTime = currentTime;
+                        stats.acknowledged++;
+                    }
+                }
+            });
+            
+            // Handle timeout and retransmission
+            const firstUnacked = frames.findIndex(f => f.status === 'sent' && currentTime - f.sentTime >= 4);
+            if (firstUnacked !== -1) {
+                for (let i = firstUnacked; i < frames.length; i++) {
+                    if (frames[i].status === 'sent' || frames[i].status === 'acked') {
+                        frames[i].status = 'waiting';
+                        frames[i].retransmits++;
+                        if (frames[i].retransmits > 0) {
+                            stats.retransmitted++;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Selective Repeat simulation
+        function simulateSelectiveRepeat() {
+            const windowSize = parseInt(windowSizeInput.value);
+            const lossType = lossTypeSelect.value;
+            const lossFrame = parseInt(lossFrameInput.value);
+            
+            // Find base (first unacked frame)
+            const base = frames.findIndex(f => f.status !== 'acked');
+            if (base === -1) return;
+            
+            // Send frames within window
+            for (let i = base; i < Math.min(base + windowSize, frames.length); i++) {
+                if (frames[i].status === 'waiting') {
+                    frames[i].status = 'sent';
+                    frames[i].sentTime = currentTime;
+                    stats.transmitted++;
+                }
+            }
+            
+            // Process ACKs
+            frames.forEach((frame, idx) => {
+                if (frame.status === 'sent' && currentTime - frame.sentTime >= 2) {
+                    const shouldLose = (lossType === 'frame' && idx === lossFrame && frame.retransmits === 0) ||
+                                     (lossType === 'ack' && idx === lossFrame && frame.retransmits === 0);
+                    
+                    if (!shouldLose) {
+                        frame.status = 'acked';
+                        frame.ackTime = currentTime;
+                        stats.acknowledged++;
+                    }
+                }
+            });
+            
+            // Handle timeout and selective retransmission
+            frames.forEach(frame => {
+                if (frame.status === 'sent' && currentTime - frame.sentTime >= 4) {
+                    frame.status = 'waiting';
+                    frame.retransmits++;
+                    stats.retransmitted++;
+                }
+            });
+        }
+
+        // Main simulation loop
+        function step() {
+            currentTime++;
+            
+            if (protocolSelect.value === 'gbn') {
+                simulateGoBackN();
+            } else {
+                simulateSelectiveRepeat();
+            }
+            
+            updateDisplay();
+            updateStats();
+            
+            // Check if all frames are acknowledged
+            if (frames.every(f => f.status === 'acked')) {
+                stop();
+            }
+        }
+
+        // Start simulation
+        function start() {
+            if (!isRunning) {
+                isRunning = true;
+                startBtn.innerHTML = '<span>⏸</span> Pause';
+                disableControls(true);
+                intervalId = setInterval(step, 500);
+            } else {
+                stop();
+            }
+        }
+
+        // Stop simulation
+        function stop() {
+            isRunning = false;
+            startBtn.innerHTML = '<span>▶</span> Start';
+            if (intervalId) {
+                clearInterval(intervalId);
+                intervalId = null;
+            }
+        }
+
+        // Reset simulation
+        function reset() {
+            stop();
+            disableControls(false);
+            init();
+        }
+
+        // Disable controls during simulation
+        function disableControls(disabled) {
+            protocolSelect.disabled = disabled;
+            windowSizeInput.disabled = disabled;
+            totalFramesInput.disabled = disabled;
+            lossTypeSelect.disabled = disabled;
+            lossFrameInput.disabled = disabled;
+        }
+
+        // Event listeners
+        startBtn.addEventListener('click', start);
+        resetBtn.addEventListener('click', reset);
+
+        lossTypeSelect.addEventListener('change', function() {
+            if (this.value === 'none') {
+                lossFrameControl.style.display = 'none';
+            } else {
+                lossFrameControl.style.display = 'block';
+            }
+            if (!isRunning) init();
+        });
+
+        protocolSelect.addEventListener('change', () => !isRunning && init());
+        windowSizeInput.addEventListener('change', () => !isRunning && init());
+        totalFramesInput.addEventListener('change', function() {
+            const max = parseInt(this.value) - 1;
+            lossFrameInput.max = max;
+            if (parseInt(lossFrameInput.value) > max) {
+                lossFrameInput.value = max;
+            }
+            if (!isRunning) init();
+        });
+        lossFrameInput.addEventListener('change', () => !isRunning && init());
+
+        // Initialize on load
+        init();
+    </script>
+</body>
+</html>
